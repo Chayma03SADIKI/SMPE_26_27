@@ -1,37 +1,8 @@
----
-title: "Parallel Quicksort — Performance Analysis"
-author: "Chayma Sadiki"
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    toc: true
-    toc_float: true
-    theme: flatly
-    code_folding: hide
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(ggplot2)
 library(dplyr)
 library(tidyr)
-```
 
-## Context
-
-This analysis evaluates the performance of three sorting implementations:
-
-- **Sequential quicksort** — standard recursive quicksort
-- **Parallel quicksort** — multi-threaded version using Pthreads (thread level = 10)
-- **Built-in libc qsort** — C standard library reference
-
-Each implementation was run **30 times per array size** to allow reliable statistical estimation (Central Limit Theorem). Array sizes range from 100 to 2,000,000 elements. The order of experiments was **randomized** to avoid cache bias.
-
----
-
-## Loading data
-
-```{r load-data}
+# 1. Load data 
 seq_df <- read.csv("../results/sequential.csv")
 par_df <- read.csv("../results/parallel.csv")
 lib_df <- read.csv("../results/libc.csv")
@@ -43,15 +14,8 @@ lib_df$method <- "Built-in (libc)"
 df <- rbind(seq_df, par_df, lib_df)
 df$method <- factor(df$method, levels = c("Sequential", "Parallel", "Built-in (libc)"))
 
-head(df)
-```
+# 2. Summary statistics (mean + 95% CI via t-distribution)
 
----
-
-## Summary statistics
-
-```{r summary}
-# 95% confidence interval using t-distribution (correct for n=30)
 summary_df <- df %>%
   group_by(size, method) %>%
   summarise(
@@ -64,15 +28,9 @@ summary_df <- df %>%
     .groups  = "drop"
   )
 
-summary_df
-```
+# 3. Performance curves
 
----
-
-## Performance curves with 95% confidence intervals
-
-```{r plot-main, fig.width=10, fig.height=6}
-ggplot(summary_df, aes(x = size, y = mean, color = method, fill = method)) +
+p1 <- ggplot(summary_df, aes(x = size, y = mean, color = method, fill = method)) +
   geom_line(linewidth = 0.9) +
   geom_point(size = 2) +
   geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15, color = NA) +
@@ -108,68 +66,44 @@ ggplot(summary_df, aes(x = size, y = mean, color = method, fill = method)) +
     plot.subtitle    = element_text(color = "grey40", size = 10)
   )
 
-ggsave("../figures/performance_curves.png", width = 10, height = 6, dpi = 150)
-```
+ggsave("../figures/performance_curves.png", plot = p1, width = 10, height = 6, dpi = 150)
 
----
+# 4. Speedup relative to sequential (delta method for CI)
 
-## Speedup of parallel over sequential — with propagated confidence intervals
-
-The speedup is defined as: **speedup = t_sequential / t_method**
-
-To propagate uncertainty, we use the **delta method**:
-if S = A/B, then:
-
-$$\text{SE}(S) \approx S \cdot \sqrt{\left(\frac{\text{SE}(A)}{A}\right)^2 + \left(\frac{\text{SE}(B)}{B}\right)^2}$$
-
-This assumes independence between the sequential and the compared method measurements, which holds here since each run uses a freshly generated random array.
-
-```{r plot-speedup, fig.width=10, fig.height=5}
-# Pivot to wide format to align sequential with each method per size
 wide_df <- summary_df %>%
   select(size, method, mean, se) %>%
-  pivot_wider(
-    names_from  = method,
-    values_from = c(mean, se)
-  )
+  pivot_wider(names_from = method, values_from = c(mean, se))
 
-# Rename columns for clarity
 names(wide_df) <- gsub(" ", "_", names(wide_df))
 names(wide_df) <- gsub("[()]", "", names(wide_df))
-# Expected cols: mean_Sequential, se_Sequential, mean_Parallel, se_Parallel,
-#                mean_Built-in_libc, se_Built-in_libc
 
 speedup_df <- wide_df %>%
   mutate(
-    # Speedup point estimates
     speedup_parallel = mean_Sequential / mean_Parallel,
     speedup_libc     = mean_Sequential / `mean_Built-in_libc`,
 
-    # SE propagation via delta method: SE(A/B) ≈ (A/B)*sqrt((SE_A/A)^2 + (SE_B/B)^2)
     se_speedup_parallel = speedup_parallel * sqrt(
       (se_Sequential / mean_Sequential)^2 +
       (se_Parallel   / mean_Parallel)^2
     ),
     se_speedup_libc = speedup_libc * sqrt(
-      (se_Sequential         / mean_Sequential)^2 +
-      (`se_Built-in_libc`    / `mean_Built-in_libc`)^2
+      (se_Sequential      / mean_Sequential)^2 +
+      (`se_Built-in_libc` / `mean_Built-in_libc`)^2
     ),
 
-    # 95% CI on speedup (n=30, df=29)
     ci_lower_parallel = speedup_parallel - qt(0.975, df = 29) * se_speedup_parallel,
     ci_upper_parallel = speedup_parallel + qt(0.975, df = 29) * se_speedup_parallel,
     ci_lower_libc     = speedup_libc     - qt(0.975, df = 29) * se_speedup_libc,
     ci_upper_libc     = speedup_libc     + qt(0.975, df = 29) * se_speedup_libc
   )
 
-# Reshape for ggplot
 speedup_long <- speedup_df %>%
   select(size,
          speedup_parallel, ci_lower_parallel, ci_upper_parallel,
          speedup_libc,     ci_lower_libc,     ci_upper_libc) %>%
   pivot_longer(
-    cols      = -size,
-    names_to  = c(".value", "comparison"),
+    cols          = -size,
+    names_to      = c(".value", "comparison"),
     names_pattern = "(.+)_(parallel|libc)"
   ) %>%
   mutate(comparison = recode(comparison,
@@ -177,7 +111,7 @@ speedup_long <- speedup_df %>%
     "libc"     = "Sequential / Built-in (libc)"
   ))
 
-ggplot(speedup_long, aes(x = size, y = speedup, color = comparison, fill = comparison)) +
+p2 <- ggplot(speedup_long, aes(x = size, y = speedup, color = comparison, fill = comparison)) +
   geom_line(linewidth = 0.9) +
   geom_point(size = 2) +
   geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15, color = NA) +
@@ -213,15 +147,11 @@ ggplot(speedup_long, aes(x = size, y = speedup, color = comparison, fill = compa
     plot.subtitle    = element_text(color = "grey40", size = 10)
   )
 
-ggsave("../figures/speedup.png", width = 10, height = 5, dpi = 150)
-```
+ggsave("../figures/speedup.png", plot = p2, width = 10, height = 5, dpi = 150)
 
----
+# 5. Boxplot — variability across repetitions
 
-## Variability across repetitions
-
-```{r plot-boxplot, fig.width=11, fig.height=6}
-ggplot(df, aes(x = factor(size), y = time_sec, fill = method)) +
+p3 <- ggplot(df, aes(x = factor(size), y = time_sec, fill = method)) +
   geom_boxplot(outlier.size = 0.8, linewidth = 0.4) +
   scale_fill_manual(values = c(
     "Sequential"      = "#E63946",
@@ -244,20 +174,6 @@ ggplot(df, aes(x = factor(size), y = time_sec, fill = method)) +
     plot.title       = element_text(face = "bold")
   )
 
-ggsave("../figures/boxplot_variability.png", width = 11, height = 6, dpi = 150)
-```
+ggsave("../figures/boxplot_variability.png", plot = p3, width = 11, height = 6, dpi = 150)
 
----
-
-## Conclusion
-
-```{r conclusion}
-crossover <- speedup_long %>%
-  filter(comparison == "Sequential / Parallel", speedup >= 1) %>%
-  slice_min(size, n = 1)
-
-cat("Parallel quicksort becomes faster than sequential starting at size:",
-    ifelse(nrow(crossover) > 0, crossover$size, "not reached in this range"), "\n")
-```
-
-The parallel implementation introduces thread creation overhead that dominates for small arrays. The crossover point — where parallelism starts paying off — depends on the number of available cores on the machine. Running this same script on different machines allows direct comparison of these crossover points. The propagated confidence intervals on the speedup chart make it clear whether the speedup is statistically significant or within noise.
+message("Done — figures saved to ../figures/")
