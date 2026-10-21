@@ -1,6 +1,7 @@
 # Critical Analysis of 3 Figures from "What a Nice Picture!" Slides
 
-NB : Since no dataset was provided, I estimated the values directly from the figures and implemented them in CSV files.
+<small>NB: Since no dataset was provided, I estimated the values directly from the figures and implemented them in CSV files.</small>
+
 ---
 
 ## Figure 1 — Slide 29: Total Brand Sales in Europe (Audi / BMW / Mercedes-Benz)
@@ -24,6 +25,10 @@ NB : Since no dataset was provided, I estimated the values directly from the fig
 | **Annotations** | Legend is placed in a separate box far from the curves — direct labeling would be better |
 | **Information** | No source cited for the data |
 | **Context** | No caption or text commenting the figure |
+
+### Corrected figure
+
+![Total Brand Sales in Europe](Corrected_figures/Total Brand Sales in Europe.png)
 
 ### What was corrected
 - Added y-axis label with unit (number of vehicles sold)
@@ -54,6 +59,10 @@ NB : Since no dataset was provided, I estimated the values directly from the fig
 | **Context** | No title on the original graph |
 | **Context** | The juxtaposition of these two variables implies a causal link that is not established — this is a classic spurious correlation trap |
 
+### Corrected figure
+
+![Juvenile Drug Arrests vs. Kids Killed by Parent](Corrected_figures/Juvenile Drug Arrests vs. Kids Killed by Parent.png)
+
 ### What was corrected
 - Removed the dual y-axis entirely
 - Split into two separate panels (facets) with their own independent y-axis
@@ -82,6 +91,10 @@ NB : Since no dataset was provided, I estimated the values directly from the fig
 | **Annotations** | Origin is not 0 — the y-axis starts around 200, which exaggerates the apparent growth |
 | **Context** | No definition of what counts as a "natural disaster" in the title or caption |
 | **Context** | The title is in French (ÉVOLUTION DU NOMBRE…) while the rest of the course is in English — inconsistency |
+
+### Corrected figure
+
+![Evolution of Natural Disasters Worldwide](Corrected_figures/Evolution of Natural Disasters Worldwide.png)
 
 ### What was corrected
 - Removed colored background — white background for clarity
