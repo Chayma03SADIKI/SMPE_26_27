@@ -63,12 +63,10 @@ Figures are saved to `figures/`.
 
 The original experiment (documented in `journal.org`, conducted by Arnaud Legrand in 2014) had several limitations:
 
-- Only **5 repetitions** per size — insufficient for reliable statistical estimation
-- Only **5 array sizes** (100 to 1M) — too coarse to identify the crossover point precisely
-- **Fixed execution order** — all repetitions of a given size run consecutively, introducing cache bias
-- Output as **plain text** requiring a Perl extractor script to produce CSV
-- **No statistical analysis** — no mean, no confidence intervals, no uncertainty reporting
-- Figures produced with **base R** and **gnuplot** — minimal readability
+- Only **5 repetitions** per size : insufficient for reliable statistical estimation
+- Only **5 array sizes** (100 to 1M) : too coarse to identify the crossover point precisely
+- **Fixed execution order** : all repetitions of a given size run consecutively, introducing cache bias
+- **No statistical analysis** : no mean, no confidence intervals, no uncertainty reporting
 
 Our improved design addresses all of these:
 
@@ -80,15 +78,6 @@ Our improved design addresses all of these:
 | Output format | Plain text → Perl extractor | Direct CSV |
 | Statistical analysis | None | Mean + 95% CI (Student t-test) |M2R-ParallelQuicksort
 
-=====================
-
-This small project aims at teaching 2nd year master students how to
-improve their experimental methodology.
-
-The [journal](journal.org) contains all information and experimental reports about 2014 experiment.
-
-| Speedup uncertainty | Not reported | Propagated via delta method |
-| Figures | Base R / gnuplot | ggplot2 |
 
 ### Array sizes tested
 
@@ -96,7 +85,7 @@ The [journal](journal.org) contains all information and experimental reports abo
 
 ### Why 30 repetitions?
 
-By the Central Limit Theorem, 30 independent measurements are sufficient for the sample mean to follow a normal distribution, enabling reliable 95% confidence interval estimation regardless of the underlying distribution of execution times.
+By the **Central Limit Theorem**, 30 independent measurements are sufficient for the sample mean to follow a normal distribution, enabling reliable 95% confidence interval estimation regardless of the underlying distribution of execution times.
 
 ### Why randomize the order?
 
@@ -138,7 +127,7 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ---
 
-## Results — Chayma Sadiki (ensietuhp06)
+## Results — Chayma SADIKI (ensietuhp06)
 
 ### Machine specifications
 
@@ -173,44 +162,3 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ---
 
-## Results — [name] ([hostname])
-
-> **This section is to be filled in by the binome.**
-
-### Machine specifications
-
-| Property | Value |
-|---|---|
-| Hostname | |
-| CPU | |
-| Logical cores | |
-| Max CPU frequency | |
-| RAM | |
-| OS | |
-| Date | |
-
-### Performance curves
-
-<!-- Replace with your figure path -->
-<!-- ![Performance curves](figures/performance_curves_binome.png) -->
-
-### Speedup
-
-<!-- Replace with your figure path -->
-<!-- ![Speedup](figures/speedup_binome.png) -->
-
-### Variability
-
-<!-- Replace with your figure path -->
-<!-- ![Boxplot](figures/boxplot_variability_binome.png) -->
-
-### Key observations
-
-<!-- Describe what you observe on your machine compared to Chayma's results -->
-
----
-
-## Authors
-
-- Chayma Sadiki — ENSIMAG M2
-- [name] — ENSIMAG M2
