@@ -187,10 +187,11 @@ before SIZES=(100 500 1000 5000 10000 50000 100000 500000 1000000 2000000)
 after SIZES=(50000 100000 500000 1000000 2500000 5000000 7500000 10000000)
 
 ---
-## Results — Chayma SADIKI (THREAD_LEVEL = 3) 
+## Results — Chayma SADIKI (THREAD_LEVEL = 3, sizes up to 10,000,000)
 
 ### Machine specifications
- The same machine is used as in experiment with THREAD_LEVEL = 3 and size up to 10000000.
+
+The same machine is used as in the previous experiments (ensietuhp06).
 
 ### Performance curves (mean ± 95% CI)
 
@@ -206,4 +207,9 @@ after SIZES=(50000 100000 500000 1000000 2500000 5000000 7500000 10000000)
 
 ### Key observations
 
-
+- With `THREAD_LEVEL = 3` (at most 8 threads) and array sizes up to 10M, the **parallel quicksort becomes faster than sequential** starting around 500,000–1,000,000 elements, reaching a speedup of approximately **1.16× at 10M elements**. This confirms that reducing thread creation overhead unlocks genuine parallelism gains at large scales.
+- The **three methods are nearly indistinguishable for small sizes** (50,000–500,000): all three curves overlap on the performance plot, and confidence intervals are very tight, indicating that the overhead and the work are comparable in this range.
+- The **built-in libc qsort is consistently ~9% slower than sequential** across all tested sizes (speedup ≈ 0.91), a gap that remains stable and statistically significant from 500,000 elements onward.
+- The **crossover point** — where parallel becomes faster than sequential — lies between 500,000 and 1,000,000 elements on this machine, and the speedup continues to grow steadily beyond that, suggesting the benefit would increase further at even larger sizes.
+- Execution times are **highly reproducible** across all 30 repetitions (narrow boxplots with few outliers), confirming the reliability of the experimental design at these larger scales.
+- Compared to the `THREAD_LEVEL = 10` experiment, this result demonstrates that **tuning the thread level is critical**: spawning too many threads (up to 1024 with level 10) eliminates any parallel advantage, while a moderate level (8 threads with level 3) allows the parallelism to pay off at sufficiently large array sizes.
