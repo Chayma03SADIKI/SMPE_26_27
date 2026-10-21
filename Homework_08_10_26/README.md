@@ -79,6 +79,7 @@ Our improved design addresses all of these:
 | Experiment order | Fixed | Randomized (`shuf`) |
 | Output format | Plain text → Perl extractor | Direct CSV |
 | Statistical analysis | None | Mean + 95% CI (Student t-test) |M2R-ParallelQuicksort
+
 =====================
 
 This small project aims at teaching 2nd year master students how to
