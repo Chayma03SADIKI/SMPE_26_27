@@ -174,7 +174,7 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ## Results — [name] ([hostname])
 
-> ⬇**This section is to be filled in by the binome.**
+> **This section is to be filled in by the binome.**
 
 ### Machine specifications
 
