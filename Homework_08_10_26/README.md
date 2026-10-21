@@ -179,5 +179,31 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 ![Boxplot variability](figures_3Threads/boxplot_variability.png)
 
 ### Key observations
-The idea here was to reduce the THREAD_LEVEL to 3 instead of 10 so that thread creation overhead want dominate, but the results obtained were :
+The idea here was to reduce the THREAD_LEVEL to 3 instead of 10 so that thread creation overhead want dominate, but the results obtained were : we gain in performance from 500000 (multithreads is faster than seq)
+
+The size of data used was not suffisent to watch the performance for greater data sizes
+we keep the same number of threads and we increase dayta sizes used 
+before SIZES=(100 500 1000 5000 10000 50000 100000 500000 1000000 2000000)
+after SIZES=(50000 100000 500000 1000000 2500000 5000000 7500000 10000000)
+
+---
+## Results — Chayma SADIKI (THREAD_LEVEL = 3) 
+
+### Machine specifications
+ The same machine is used as in experiment with THREAD_LEVEL = 3 and size up to 10000000.
+
+### Performance curves (mean ± 95% CI)
+
+![Performance curves](figures_3Threads_size10000000/performance_curves.png)
+
+### Speedup relative to sequential (with propagated 95% CI)
+
+![Speedup](figures_3Threads_size10000000/speedup.png)
+
+### Variability across 30 repetitions
+
+![Boxplot variability](figures_3Threads_size10000000/boxplot_variability.png)
+
+### Key observations
+
 
