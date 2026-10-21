@@ -28,7 +28,7 @@
 
 ### Corrected figure
 
-![Total Brand Sales in Europe](Corrected_figures/Total Brand Sales in Europe.png)
+![Total Brand Sales in Europe](Corrected_figures/total_brand_sales.png)
 
 ### What was corrected
 - Added y-axis label with unit (number of vehicles sold)
@@ -61,7 +61,7 @@
 
 ### Corrected figure
 
-![Juvenile Drug Arrests vs. Kids Killed by Parent](Corrected_figures/Juvenile Drug Arrests vs. Kids Killed by Parent.png)
+![Juvenile Drug Arrests](Corrected_figures/juvenile_drug_arrests.png)
 
 ### What was corrected
 - Removed the dual y-axis entirely
@@ -94,7 +94,7 @@
 
 ### Corrected figure
 
-![Evolution of Natural Disasters Worldwide](Corrected_figures/Evolution of Natural Disasters Worldwide.png)
+![Natural Disasters](Corrected_figures/natural_disasters.png)
 
 ### What was corrected
 - Removed colored background — white background for clarity
