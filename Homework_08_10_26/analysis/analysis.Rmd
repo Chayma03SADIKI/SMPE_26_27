@@ -14,6 +14,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 library(ggplot2)
 library(dplyr)
+library(tidyr)
 ```
 
 ## Context
@@ -31,8 +32,6 @@ Each implementation was run **30 times per array size** to allow reliable statis
 ## Loading data
 
 ```{r load-data}
-# Set this path to the results/ folder relative to this file
-# If you open the .Rmd from the analysis/ folder, this path is correct
 seq_df <- read.csv("../results/sequential.csv")
 par_df <- read.csv("../results/parallel.csv")
 lib_df <- read.csv("../results/libc.csv")
@@ -52,7 +51,7 @@ head(df)
 ## Summary statistics
 
 ```{r summary}
-# 95% confidence interval using t-distribution
+# 95% confidence interval using t-distribution (correct for n=30)
 summary_df <- df %>%
   group_by(size, method) %>%
   summarise(
@@ -114,33 +113,77 @@ ggsave("../figures/performance_curves.png", width = 10, height = 6, dpi = 150)
 
 ---
 
-## Speedup of parallel over sequential
+## Speedup of parallel over sequential — with propagated confidence intervals
+
+The speedup is defined as: **speedup = t_sequential / t_method**
+
+To propagate uncertainty, we use the **delta method**:
+if S = A/B, then:
+
+$$\text{SE}(S) \approx S \cdot \sqrt{\left(\frac{\text{SE}(A)}{A}\right)^2 + \left(\frac{\text{SE}(B)}{B}\right)^2}$$
+
+This assumes independence between the sequential and the compared method measurements, which holds here since each run uses a freshly generated random array.
 
 ```{r plot-speedup, fig.width=10, fig.height=5}
-speedup_df <- summary_df %>%
-  select(size, method, mean) %>%
-  tidyr::pivot_wider(names_from = method, values_from = mean) %>%
-  mutate(
-    speedup_parallel = Sequential / Parallel,
-    speedup_libc     = Sequential / `Built-in (libc)`
+# Pivot to wide format to align sequential with each method per size
+wide_df <- summary_df %>%
+  select(size, method, mean, se) %>%
+  pivot_wider(
+    names_from  = method,
+    values_from = c(mean, se)
   )
 
+# Rename columns for clarity
+names(wide_df) <- gsub(" ", "_", names(wide_df))
+names(wide_df) <- gsub("[()]", "", names(wide_df))
+# Expected cols: mean_Sequential, se_Sequential, mean_Parallel, se_Parallel,
+#                mean_Built-in_libc, se_Built-in_libc
+
+speedup_df <- wide_df %>%
+  mutate(
+    # Speedup point estimates
+    speedup_parallel = mean_Sequential / mean_Parallel,
+    speedup_libc     = mean_Sequential / `mean_Built-in_libc`,
+
+    # SE propagation via delta method: SE(A/B) ≈ (A/B)*sqrt((SE_A/A)^2 + (SE_B/B)^2)
+    se_speedup_parallel = speedup_parallel * sqrt(
+      (se_Sequential / mean_Sequential)^2 +
+      (se_Parallel   / mean_Parallel)^2
+    ),
+    se_speedup_libc = speedup_libc * sqrt(
+      (se_Sequential         / mean_Sequential)^2 +
+      (`se_Built-in_libc`    / `mean_Built-in_libc`)^2
+    ),
+
+    # 95% CI on speedup (n=30, df=29)
+    ci_lower_parallel = speedup_parallel - qt(0.975, df = 29) * se_speedup_parallel,
+    ci_upper_parallel = speedup_parallel + qt(0.975, df = 29) * se_speedup_parallel,
+    ci_lower_libc     = speedup_libc     - qt(0.975, df = 29) * se_speedup_libc,
+    ci_upper_libc     = speedup_libc     + qt(0.975, df = 29) * se_speedup_libc
+  )
+
+# Reshape for ggplot
 speedup_long <- speedup_df %>%
-  select(size, speedup_parallel, speedup_libc) %>%
-  tidyr::pivot_longer(
-    cols      = c(speedup_parallel, speedup_libc),
-    names_to  = "comparison",
-    values_to = "speedup"
+  select(size,
+         speedup_parallel, ci_lower_parallel, ci_upper_parallel,
+         speedup_libc,     ci_lower_libc,     ci_upper_libc) %>%
+  pivot_longer(
+    cols      = -size,
+    names_to  = c(".value", "comparison"),
+    names_pattern = "(.+)_(parallel|libc)"
   ) %>%
   mutate(comparison = recode(comparison,
-    "speedup_parallel" = "Sequential / Parallel",
-    "speedup_libc"     = "Sequential / Built-in (libc)"
+    "parallel" = "Sequential / Parallel",
+    "libc"     = "Sequential / Built-in (libc)"
   ))
 
-ggplot(speedup_long, aes(x = size, y = speedup, color = comparison)) +
+ggplot(speedup_long, aes(x = size, y = speedup, color = comparison, fill = comparison)) +
   geom_line(linewidth = 0.9) +
   geom_point(size = 2) +
-  geom_hline(yintercept = 1, linetype = "dashed", color = "grey50") +
+  geom_ribbon(aes(ymin = ci_lower, ymax = ci_upper), alpha = 0.15, color = NA) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey40") +
+  annotate("text", x = 200, y = 1.05, label = "speedup = 1 (no gain)",
+           color = "grey40", size = 3) +
   scale_x_log10(
     breaks = c(100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 2000000),
     labels = scales::comma
@@ -149,12 +192,17 @@ ggplot(speedup_long, aes(x = size, y = speedup, color = comparison)) +
     "Sequential / Parallel"        = "#457B9D",
     "Sequential / Built-in (libc)" = "#2D6A4F"
   )) +
+  scale_fill_manual(values = c(
+    "Sequential / Parallel"        = "#457B9D",
+    "Sequential / Built-in (libc)" = "#2D6A4F"
+  )) +
   labs(
     title    = "Speedup relative to sequential quicksort",
-    subtitle = "Values > 1 mean the alternative is faster than sequential",
+    subtitle = "Values > 1 mean the alternative is faster — shaded area: 95% CI (delta method)",
     x        = "Array size (log scale)",
     y        = "Speedup (sequential time / method time)",
     color    = NULL,
+    fill     = NULL,
     caption  = paste("Machine:", Sys.info()["nodename"], "— Date:", Sys.Date())
   ) +
   theme_bw(base_size = 12) +
@@ -204,12 +252,12 @@ ggsave("../figures/boxplot_variability.png", width = 11, height = 6, dpi = 150)
 ## Conclusion
 
 ```{r conclusion}
-crossover <- speedup_df %>%
-  filter(speedup_parallel >= 1) %>%
+crossover <- speedup_long %>%
+  filter(comparison == "Sequential / Parallel", speedup >= 1) %>%
   slice_min(size, n = 1)
 
 cat("Parallel quicksort becomes faster than sequential starting at size:",
     ifelse(nrow(crossover) > 0, crossover$size, "not reached in this range"), "\n")
 ```
 
-The parallel implementation introduces thread creation overhead that dominates for small arrays. The crossover point — where parallelism starts paying off — depends on the number of available cores on the machine. Running this same script on different machines allows direct comparison of these crossover points.
+The parallel implementation introduces thread creation overhead that dominates for small arrays. The crossover point — where parallelism starts paying off — depends on the number of available cores on the machine. Running this same script on different machines allows direct comparison of these crossover points. The propagated confidence intervals on the speedup chart make it clear whether the speedup is statistically significant or within noise.

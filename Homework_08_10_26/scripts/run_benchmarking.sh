@@ -78,3 +78,16 @@ echo "Done. Results written to:"
 echo "  $SEQ_CSV"
 echo "  $PAR_CSV"
 echo "  $LIB_CSV"
+
+# Sort CSV files by size then rep
+echo "Sorting CSV files..."
+
+for csv in "$SEQ_CSV" "$PAR_CSV" "$LIB_CSV"; do
+    header=$(head -1 "$csv")
+    tail -n +2 "$csv" | sort -t',' -k1,1n -k2,2n > "${csv}.tmp"
+    echo "$header" > "$csv"
+    cat "${csv}.tmp" >> "$csv"
+    rm "${csv}.tmp"
+done
+
+echo "CSV files sorted."
