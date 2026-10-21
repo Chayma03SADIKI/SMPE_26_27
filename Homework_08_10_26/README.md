@@ -127,7 +127,7 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ---
 
-## Results — Chayma SADIKI (ensietuhp06)
+## Results — Chayma SADIKI (THREAD_LEVEL = 10) 
 
 ### Machine specifications
 
@@ -143,15 +143,15 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ### Performance curves (mean ± 95% CI)
 
-![Performance curves](figures/performance_curves.png)
+![Performance curves](figures_10Threads/performance_curves.png)
 
 ### Speedup relative to sequential (with propagated 95% CI)
 
-![Speedup](figures/speedup.png)
+![Speedup](figures_10Threads/speedup.png)
 
 ### Variability across 30 repetitions
 
-![Boxplot variability](figures/boxplot_variability.png)
+![Boxplot variability](figures_10Threads/boxplot_variability.png)
 
 ### Key observations
 
@@ -161,4 +161,23 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 - This contrasts with the 2014 results where parallel was faster at 1M — likely due to a higher core count on that machine.
 
 ---
+## Results — Chayma SADIKI (THREAD_LEVEL = 3) 
+
+### Machine specifications
+ The same machine is used as in experiment with THREAD_LEVEL = 3.
+
+### Performance curves (mean ± 95% CI)
+
+![Performance curves](figures_3Threads/performance_curves.png)
+
+### Speedup relative to sequential (with propagated 95% CI)
+
+![Speedup](figures_3Threads/speedup.png)
+
+### Variability across 30 repetitions
+
+![Boxplot variability](figures_3Threads/boxplot_variability.png)
+
+### Key observations
+The idea here was to reduce the THREAD_LEVEL to 3 instead of 10 so that thread creation overhead want dominate, but the results obtained were :
 
