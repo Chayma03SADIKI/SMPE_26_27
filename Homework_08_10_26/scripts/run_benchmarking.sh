@@ -2,9 +2,12 @@
 
 # ============================================================
 # run_benchmarking.sh
-# Compiles parallelQuicksort, runs 30 measurements per size
+# Compiles parallelQuicksort, runs measurements per size
 # per method (sequential, parallel, built-in libc qsort),
-# and writes results directly to CSV files in results/
+# and writes results directly to CSV files.
+#
+# Configuration is loaded from config.sh at project root.
+# Edit config.sh to change sizes, thread level, output dirs.
 # ============================================================
 
 set -e
@@ -12,31 +15,45 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 SRC_DIR="$ROOT_DIR/src"
-RESULTS_DIR="$ROOT_DIR/results"
 
-# --- Compile ---
+# --- Load config ---
+CONFIG_FILE="$ROOT_DIR/config.sh"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "ERROR: config.sh not found at $ROOT_DIR"
+    exit 1
+fi
+source "$CONFIG_FILE"
+echo "Config loaded:"
+echo "  THREAD_LEVEL : $THREAD_LEVEL"
+echo "  SIZES        : ${SIZES[*]}"
+echo "  REPS         : $REPS"
+echo "  RESULTS_DIR  : $RESULTS_DIR"
+echo "  FIGURES_DIR  : $FIGURES_DIR"
+
+# --- Resolve absolute paths ---
+RESULTS_ABS="$ROOT_DIR/$RESULTS_DIR"
+FIGURES_ABS="$ROOT_DIR/$FIGURES_DIR"
+
+# --- Compile (no sed needed: THREAD_LEVEL is passed as argument) ---
+echo ""
 echo "Compiling..."
 make -C "$SRC_DIR"
 echo "Compilation done."
 
-# --- Setup results directory ---
-mkdir -p "$RESULTS_DIR"
+# --- Setup output directories ---
+mkdir -p "$RESULTS_ABS"
+mkdir -p "$FIGURES_ABS"
 
-SEQ_CSV="$RESULTS_DIR/sequential.csv"
-PAR_CSV="$RESULTS_DIR/parallel.csv"
-LIB_CSV="$RESULTS_DIR/libc.csv"
+SEQ_CSV="$RESULTS_ABS/sequential.csv"
+PAR_CSV="$RESULTS_ABS/parallel.csv"
+LIB_CSV="$RESULTS_ABS/libc.csv"
 
 # Write CSV headers
 echo "size,rep,time_sec" > "$SEQ_CSV"
 echo "size,rep,time_sec" > "$PAR_CSV"
 echo "size,rep,time_sec" > "$LIB_CSV"
 
-# --- Parameters ---
-SIZES=(100 500 1000 5000 10000 50000 100000 500000 1000000 2000000)
-REPS=30
-
 # --- Build randomized experiment list ---
-# Each line: "size rep"
 EXPERIMENTS=()
 for size in "${SIZES[@]}"; do
     for rep in $(seq 1 $REPS); do
@@ -50,7 +67,8 @@ SHUFFLED=$(printf "%s\n" "${EXPERIMENTS[@]}" | shuf)
 TOTAL=$(echo "$SHUFFLED" | wc -l)
 COUNT=0
 
-echo "Running $TOTAL experiments (${#SIZES[@]} sizes x $REPS repetitions)..."
+echo ""
+echo "Running $TOTAL experiments (${#SIZES[@]} sizes x $REPS repetitions x 3 methods)..."
 
 while IFS= read -r experiment; do
     size=$(echo "$experiment" | awk '{print $1}')
@@ -59,8 +77,8 @@ while IFS= read -r experiment; do
     COUNT=$((COUNT + 1))
     echo "[$COUNT/$TOTAL] size=$size rep=$rep"
 
-    # Run the benchmark and capture output
-    output=$("$SRC_DIR/parallelQuicksort" "$size")
+    # Pass size and THREAD_LEVEL as arguments — no source patching needed
+    output=$("$SRC_DIR/parallelQuicksort" "$size" "$THREAD_LEVEL")
 
     # Parse each line and append to the right CSV
     seq_time=$(echo "$output" | grep "^Sequential" | awk '{print $(NF-1)}')
@@ -73,15 +91,9 @@ while IFS= read -r experiment; do
 
 done <<< "$SHUFFLED"
 
+# --- Sort CSV files by size then rep ---
 echo ""
-echo "Done. Results written to:"
-echo "  $SEQ_CSV"
-echo "  $PAR_CSV"
-echo "  $LIB_CSV"
-
-# Sort CSV files by size then rep
 echo "Sorting CSV files..."
-
 for csv in "$SEQ_CSV" "$PAR_CSV" "$LIB_CSV"; do
     header=$(head -1 "$csv")
     tail -n +2 "$csv" | sort -t',' -k1,1n -k2,2n > "${csv}.tmp"
@@ -90,4 +102,12 @@ for csv in "$SEQ_CSV" "$PAR_CSV" "$LIB_CSV"; do
     rm "${csv}.tmp"
 done
 
-echo "CSV files sorted."
+echo ""
+echo "Done. Results written to:"
+echo "  $SEQ_CSV"
+echo "  $PAR_CSV"
+echo "  $LIB_CSV"
+echo ""
+echo "Now open analysis/analysis.R in RStudio and update config.R:"
+echo "  results_dir <- \"$RESULTS_DIR\""
+echo "  figures_dir <- \"$FIGURES_DIR\""

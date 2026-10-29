@@ -15,13 +15,12 @@ The original code was written by Joshua Stough (Washington and Lee University) a
 ```
 .
 ├── analysis/
-│   └── analysis.Rmd        # R Markdown analysis: statistics + figures
-├── figures/                # Generated figures (ggplot2)
+│   └── analysis.R          # R analysis script: statistics + figures
+├── config.sh               # Benchmark configuration (sizes, thread level, paths)
+├── config.R                # R analysis configuration (results and figures paths)
+├── figures/                # Figures of experiment
 ├── original_figures/       # Original figures from the 2014 experiment
-├── results/                # CSV measurement files (one per method)
-│   ├── sequential.csv
-│   ├── parallel.csv
-│   └── libc.csv
+├── results/                # CSV results
 ├── scripts/
 │   └── run_benchmarking.sh # Benchmark script
 └── src/
@@ -33,27 +32,42 @@ The original code was written by Joshua Stough (Washington and Lee University) a
 
 ## How to reproduce
 
-**1. Compile and run the benchmark**
+**1. Edit `config.sh`** to set your parameters:
+
+```bash
+THREAD_LEVEL=3
+SIZES=(100 500 1000 5000 10000 50000 100000 500000 1000000 2000000)
+REPS=30
+RESULTS_DIR="results"
+FIGURES_DIR="figures"
+```
+
+**2. Run the benchmark:**
 
 ```bash
 bash scripts/run_benchmarking.sh
 ```
 
 This will:
-- Compile `src/parallelQuicksort.c` via `make`
-- Run 30 measurements per array size per method
+- Patch `THREAD_LEVEL` in `src/parallelQuicksort.c` and recompile
+- Run `REPS` measurements per array size per method
 - Randomize the experiment order to avoid cache bias
-- Write results directly to `results/sequential.csv`, `results/parallel.csv`, `results/libc.csv`
+- Write results directly to CSV files in `RESULTS_DIR/`
 
-**2. Generate the analysis and figures**
+**3. Edit `config.R`** to point to the right directories:
 
-Open `analysis/analysis.Rmd` in RStudio, then click **Knit**. Required R packages:
+```r
+results_dir <- "../results"
+figures_dir <- "../figures"
+```
+
+**4. Run the analysis** in RStudio — open `analysis/analysis.R` and source it. Required packages:
 
 ```r
 install.packages(c("ggplot2", "dplyr", "tidyr", "scales"))
 ```
 
-Figures are saved to `figures/`.
+Figures are saved to `figures_dir`.
 
 ---
 
@@ -63,39 +77,63 @@ Figures are saved to `figures/`.
 
 The original experiment (documented in `journal.org`, conducted by Arnaud Legrand in 2014) had several limitations:
 
-- Only **5 repetitions** per size : insufficient for reliable statistical estimation
-- Only **5 array sizes** (100 to 1M) : too coarse to identify the crossover point precisely
-- **Fixed execution order** : all repetitions of a given size run consecutively, introducing cache bias
-- **No statistical analysis** : no mean, no confidence intervals, no uncertainty reporting
+- Only **5 repetitions** per size — insufficient for reliable statistical estimation
+- Only **5 array sizes** (100 to 1M) — too coarse to identify the crossover point precisely
+- **Fixed execution order** — all repetitions of a given size run consecutively, introducing cache bias
+- **No statistical analysis** — no mean, no confidence intervals, no uncertainty reporting
 
 Our improved design addresses all of these:
 
 | | Original (2014) | This work (2026) |
 |---|---|---|
-| Array sizes | 5 (100 to 1M) | 10 (100 to 2M) |
-| Repetitions per size | 5 | 30 |
+| Array sizes | 5 (100 to 1M) | Configurable |
+| Repetitions per size | 5 | 30 (configurable) |
 | Experiment order | Fixed | Randomized (`shuf`) |
 | Output format | Plain text → Perl extractor | Direct CSV |
-| Statistical analysis | None | Mean + 95% CI (Student t-test) |M2R-ParallelQuicksort
+| Statistical analysis | None | Mean + 95% CI (Student t-test) |
+| Speedup uncertainty | Not reported | Propagated via delta method |
+| Figures | Base R / gnuplot | ggplot2 |
 
+### Configuration files (added 2026-10-29)
 
-### Array sizes tested
+To avoid hardcoding parameters in the scripts and improve reusability,
+all experiment parameters are now centralized in two configuration files:
 
-`100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 2000000`
+**`config.sh`** — controls the benchmark script:
+- `THREAD_LEVEL` : number of thread levels for parallel quicksort
+- `SIZES` : array sizes to benchmark
+- `REPS` : number of repetitions per size
+- `RESULTS_DIR` : output directory for CSV files
+- `FIGURES_DIR` : output directory for figures
+
+**`config.R`** — controls the R analysis script:
+- `results_dir` : path to the CSV results folder
+- `figures_dir` : path to save the generated figures
+
+This makes it easy to run multiple experiments with different parameters
+(e.g. different thread levels or size ranges) without modifying the scripts
+themselves — only `config.sh` and `config.R` need to be updated between runs.
 
 ### Why 30 repetitions?
 
-By the **Central Limit Theorem**, 30 independent measurements are sufficient for the sample mean to follow a normal distribution, enabling reliable 95% confidence interval estimation regardless of the underlying distribution of execution times.
+By the **Central Limit Theorem**, 30 independent measurements are sufficient
+for the sample mean to follow a normal distribution, enabling reliable 95%
+confidence interval estimation regardless of the underlying distribution of
+execution times.
 
 ### Why randomize the order?
 
-Running all repetitions of the same size consecutively can bias results due to CPU cache warm-up effects. Randomizing the order of all `(size, repetition)` pairs ensures each measurement is independent.
+Running all repetitions of the same size consecutively can bias results due
+to CPU cache warm-up effects. Randomizing the order of all `(size, repetition)`
+pairs ensures each measurement is independent.
 
 ---
 
 ## Original experiment (2014) — Arnaud Legrand
 
-The original experiment was run on an Intel Core i7 laptop running Debian with Linux 3.14.15. Only 5 sizes and 5 repetitions were used. Results were extracted via a Perl script and plotted with base R and gnuplot.
+The original experiment was run on an Intel Core i7 laptop running Debian
+with Linux 3.14.15. Only 5 sizes and 5 repetitions were used. Results were
+extracted via a Perl script and plotted with base R and gnuplot.
 
 ### Original script
 
@@ -123,11 +161,12 @@ done
 > "A first crude analysis seems to reveal that the parallel version is worth it for arrays larger than 400,000."
 > — Arnaud Legrand, journal.org, 2014-10-13
 
-Note: this conclusion was drawn from only 5 repetitions with no confidence intervals, on a machine with more physical cores than the current one.
+Note: this conclusion was drawn from only 5 repetitions with no confidence
+intervals, on a machine with more physical cores than the current one.
 
 ---
 
-## Results — Chayma SADIKI (THREAD_LEVEL = 10) 
+## Results — Chayma SADIKI (THREAD_LEVEL = 10)
 
 ### Machine specifications
 
@@ -155,16 +194,22 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 
 ### Key observations
 
-- The **parallel quicksort is slower than sequential for all tested sizes** on this machine. The thread creation overhead (`THREAD_LEVEL = 10` → up to 1024 threads) dominates even at 2M elements.
+- The **parallel quicksort is slower than sequential for all tested sizes**.
+  The thread creation overhead (`THREAD_LEVEL = 10` → up to 1024 threads)
+  dominates even at 2M elements.
 - The **built-in libc qsort** performs very similarly to sequential across all sizes.
-- Execution times are highly **consistent across repetitions** (tight boxplots), which validates the experimental design.
-- This contrasts with the 2014 results where parallel was faster at 1M — likely due to a higher core count on that machine.
+- Execution times are highly **consistent across repetitions** (tight boxplots),
+  which validates the experimental design.
+- This contrasts with the 2014 results where parallel was faster at 1M —
+  likely due to a higher core count on that machine.
 
 ---
-## Results — Chayma SADIKI (THREAD_LEVEL = 3) 
+
+## Results — Chayma SADIKI (THREAD_LEVEL = 3)
 
 ### Machine specifications
- The same machine is used as in experiment with THREAD_LEVEL = 3.
+
+Same machine as above (ensietuhp06).
 
 ### Performance curves (mean ± 95% CI)
 
@@ -179,19 +224,24 @@ Note: this conclusion was drawn from only 5 repetitions with no confidence inter
 ![Boxplot variability](figures_3Threads/boxplot_variability.png)
 
 ### Key observations
-The idea here was to reduce the THREAD_LEVEL to 3 instead of 10 so that thread creation overhead want dominate, but the results obtained were : we gain in performance from 500000 (multithreads is faster than seq)
 
-The size of data used was not suffisent to watch the performance for greater data sizes
-we keep the same number of threads and we increase dayta sizes used 
-before SIZES=(100 500 1000 5000 10000 50000 100000 500000 1000000 2000000)
-after SIZES=(50000 100000 500000 1000000 2500000 5000000 7500000 10000000)
+Reducing `THREAD_LEVEL` from 10 to 3 (at most 8 threads) significantly reduces
+thread creation overhead. The parallel version becomes faster than sequential
+starting around 500,000 elements. However, the original size range was not
+sufficient to fully observe the performance gains at larger scales, which
+motivated the next experiment.
+
+Sizes used: `100, 500, 1000, 5000, 10000, 50000, 100000, 500000, 1000000, 2000000`
 
 ---
+
 ## Results — Chayma SADIKI (THREAD_LEVEL = 3, sizes up to 10,000,000)
 
 ### Machine specifications
 
-The same machine is used as in the previous experiments (ensietuhp06).
+Same machine as above (ensietuhp06).
+
+Sizes used: `50000, 100000, 500000, 1000000, 2500000, 5000000, 7500000, 10000000`
 
 ### Performance curves (mean ± 95% CI)
 
@@ -207,9 +257,18 @@ The same machine is used as in the previous experiments (ensietuhp06).
 
 ### Key observations
 
-- With `THREAD_LEVEL = 3` (at most 8 threads) and array sizes up to 10M, the **parallel quicksort becomes faster than sequential** starting around 500,000–1,000,000 elements, reaching a speedup of approximately **1.16× at 10M elements**. This confirms that reducing thread creation overhead unlocks genuine parallelism gains at large scales.
-- The **three methods are nearly indistinguishable for small sizes** (50,000–500,000): all three curves overlap on the performance plot, and confidence intervals are very tight, indicating that the overhead and the work are comparable in this range.
-- The **built-in libc qsort is consistently ~9% slower than sequential** across all tested sizes (speedup ≈ 0.91), a gap that remains stable and statistically significant from 500,000 elements onward.
-- The **crossover point** — where parallel becomes faster than sequential — lies between 500,000 and 1,000,000 elements on this machine, and the speedup continues to grow steadily beyond that, suggesting the benefit would increase further at even larger sizes.
-- Execution times are **highly reproducible** across all 30 repetitions (narrow boxplots with few outliers), confirming the reliability of the experimental design at these larger scales.
-- Compared to the `THREAD_LEVEL = 10` experiment, this result demonstrates that **tuning the thread level is critical**: spawning too many threads (up to 1024 with level 10) eliminates any parallel advantage, while a moderate level (8 threads with level 3) allows the parallelism to pay off at sufficiently large array sizes.
+- With `THREAD_LEVEL = 3` (at most 8 threads) and array sizes up to 10M, the
+  **parallel quicksort becomes faster than sequential** starting around
+  500,000–1,000,000 elements, reaching a speedup of approximately **1.16× at 10M**.
+- The **three methods are nearly indistinguishable for small sizes** (50,000–500,000):
+  all three curves overlap and confidence intervals are tight.
+- The **built-in libc qsort is consistently ~9% slower than sequential** across
+  all tested sizes (speedup ≈ 0.91), a stable and statistically significant gap.
+- The **crossover point** lies between 500,000 and 1,000,000 elements, and the
+  speedup continues to grow steadily beyond that.
+- Execution times are **highly reproducible** across all 30 repetitions.
+- Compared to `THREAD_LEVEL = 10`, this confirms that **tuning the thread level
+  is critical**: too many threads eliminates any parallel advantage, while a
+  moderate level allows parallelism to pay off at large array sizes.
+
+---

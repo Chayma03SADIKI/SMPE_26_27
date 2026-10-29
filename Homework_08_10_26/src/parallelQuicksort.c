@@ -8,6 +8,11 @@
   This code quicksorts a random list of size given by the argument
   (default 1M) and times both sequential quicksort and parallel (using
   Pthreads).
+
+  Usage: ./parallelQuicksort [size] [thread_level]
+    size         : number of elements to sort (default: 1000000)
+    thread_level : recursion depth for thread creation, up to 2^level
+                   threads may be spawned (default: 10)
 */
 
 
@@ -19,7 +24,7 @@
 #include <string.h>
 
 #define DNUM 1000000
-#define THREAD_LEVEL 10
+#define DEFAULT_THREAD_LEVEL 10
 
 //for sequential and parallel implementation
 void swap(double lyst[], int i, int j);
@@ -58,10 +63,17 @@ int main(int argc, char *argv[])
   srand(time(NULL));            //seed random
 
   int NUM = DNUM;
-  if (argc == 2)                //user specified list size.
+  if (argc >= 2)                //user specified list size.
   {
     NUM = atoi(argv[1]);
   }
+
+  int TLEVEL = DEFAULT_THREAD_LEVEL;
+  if (argc >= 3)                //user specified thread level.
+  {
+    TLEVEL = atoi(argv[2]);
+  }
+
   //Want to compare sorting on the same list,
   //so backup.
   double *lystbck = (double *) malloc(NUM * sizeof(double));
@@ -76,7 +88,7 @@ int main(int argc, char *argv[])
   memcpy(lyst, lystbck, NUM * sizeof(double));
 
 
-  //Sequential mergesort, and timing.
+  //Sequential quicksort, and timing.
   gettimeofday(&start, NULL);
   quicksort(lyst, NUM);
   gettimeofday(&end, NULL);
@@ -97,7 +109,7 @@ int main(int argc, char *argv[])
   memcpy(lyst, lystbck, NUM * sizeof(double));
 
   gettimeofday(&start, NULL);
-  parallelQuicksort(lyst, NUM, THREAD_LEVEL);
+  parallelQuicksort(lyst, NUM, TLEVEL);
   gettimeofday(&end, NULL);
 
   if (!isSorted(lyst, NUM)) {
@@ -204,9 +216,6 @@ void parallelQuicksort(double lyst[], int size, int tlevel)
     printf("ERROR; return code from pthread_join() is %d\n", rc);
     exit(-1);
   }
-  //printf("Main: completed join with top thread having a status of %ld\n",
-  //              (long)status);
-
 }
 
 /*
@@ -222,10 +231,6 @@ void *parallelQuicksortHelper(void *threadarg)
 
   struct thread_data *my_data;
   my_data = (struct thread_data *) threadarg;
-
-  //fyi:
-  //printf("Thread responsible for [%d, %d], level %d.\n",
-  //              my_data->low, my_data->high, my_data->level);
 
   if (my_data->level <= 0 || my_data->low == my_data->high+1) {
     //We have plenty of threads, finish with sequential.
@@ -254,9 +259,6 @@ void *parallelQuicksortHelper(void *threadarg)
   thread_data_array[1].high = my_data->high;
 
   //Now, instantiate the threads.
-  //In quicksort of course, due to the transitive property,
-  //no elements in the left and right sides of mid will have
-  //to be compared again.
   pthread_t threads[2];
   for (t = 0; t < 2; t++) {
     rc = pthread_create(&threads[t], &attr, parallelQuicksortHelper,
